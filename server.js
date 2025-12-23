@@ -558,16 +558,34 @@ app.post('/api/session/:sessionId/guess', (req, res) => {
         questionsUsed: session.numQuestions - (session.numQuestions - session.questions.length)
     };
     
+    // Verificar si la adivinanza es correcta ANTES de agregarla
+    const isCorrect = character.id === session.thief.id;
+    
     session.guesses.push(guess);
     sessions.set(sessionId, session);
     
     // Notificar a todos los clientes
     io.to(sessionId).emit('guessMade', {
         guess,
-        guesses: session.guesses
+        guesses: session.guesses,
+        isCorrect: isCorrect
     });
     
-    // Verificar si todos han adivinado
+    // Si adivinó correctamente, notificar a todos y terminar la ronda después del video
+    if (isCorrect) {
+        io.to(sessionId).emit('thiefFound', {
+            finder: playerName,
+            guess: guess
+        });
+        // Terminar la ronda después de un delay para mostrar el modal y el video
+        // El video dura ~30 segundos, así que terminamos la ronda después
+        setTimeout(() => {
+            endRound(sessionId);
+        }, 35000); // 35 segundos: 3s modal + 30s video + 2s buffer
+        return res.json({ session, correct: true });
+    }
+    
+    // Verificar si todos han adivinado (solo si nadie adivinó correctamente)
     const nonMasterPlayers = session.players.filter(p => !p.isMaster).length;
     if (session.guesses.length >= nonMasterPlayers || 
         session.questions.length >= session.numQuestions) {

@@ -59,13 +59,23 @@ function initializeSocket() {
         GameState.eliminatedCharacters = []; // Resetear eliminados al inicio de ronda
         
         // Ocultar pantalla de generación
-        document.getElementById('variations-generation-status').classList.add('hidden');
+        const statusDiv = document.getElementById('variations-generation-status');
+        if (statusDiv) {
+            statusDiv.classList.add('hidden');
+        }
         
-        // NO reproducir video aquí - ya se reprodujo al inicio de sesión
-        // Solo ir directamente al juego
-        
-        updateUI();
-        showScreen('game-screen');
+        // Si es el maestro, ya vio el video al inicio de sesión
+        // Si es un invitado, reproducir el video ahora
+        if (GameState.isMaster) {
+            updateUI();
+            showScreen('game-screen');
+        } else {
+            // Los invitados ven el video cuando la ronda comienza
+            playRoundStartVideo(() => {
+                updateUI();
+                showScreen('game-screen');
+            });
+        }
     });
     
     GameState.socket.on('variationsGenerationStarted', () => {
@@ -114,6 +124,15 @@ function initializeSocket() {
     GameState.socket.on('guessMade', (data) => {
         GameState.guesses = data.guesses;
         updateUI();
+        
+        // Si alguien adivinó correctamente, mostrar modal y video
+        if (data.isCorrect) {
+            showThiefFoundModal(data.guess.playerName);
+        }
+    });
+    
+    GameState.socket.on('thiefFound', (data) => {
+        showThiefFoundModal(data.finder);
     });
     
     GameState.socket.on('roundEnded', (data) => {
@@ -278,8 +297,60 @@ function initializeVideoModal() {
     }
 }
 
+// Mostrar modal de ladrón encontrado y reproducir video
+function showThiefFoundModal(finderName) {
+    const modal = document.getElementById('thief-found-modal');
+    const finderNameElement = document.getElementById('thief-finder-name');
+    
+    if (modal && finderNameElement) {
+        finderNameElement.textContent = `${finderName} encontró al ladrón!`;
+        modal.classList.remove('hidden');
+        
+        // Después de 3 segundos, cerrar el modal y reproducir el video
+        setTimeout(() => {
+            modal.classList.add('hidden');
+            playThiefFoundVideo();
+        }, 3000);
+    }
+}
+
+// Reproducir video de ladrón encontrado
+function playThiefFoundVideo() {
+    const videoModal = document.getElementById('thief-found-video-modal');
+    const iframe = document.getElementById('thief-found-video-iframe');
+    
+    if (!videoModal || !iframe) return;
+    
+    // ID del video de Google Drive: 1TjCZdjiqxrVS5te8JgdpSHdAUeL4LgCh
+    const fileId = '1TjCZdjiqxrVS5te8JgdpSHdAUeL4LgCh';
+    const iframeUrl = `https://drive.google.com/file/d/${fileId}/preview`;
+    
+    iframe.src = iframeUrl;
+    videoModal.classList.remove('hidden');
+    
+    // Cerrar automáticamente después de 30 segundos (ajustar según duración del video)
+    setTimeout(() => {
+        if (!videoModal.classList.contains('hidden')) {
+            closeThiefFoundVideoModal();
+        }
+    }, 30000);
+}
+
+// Cerrar modal de video de ladrón encontrado
+function closeThiefFoundVideoModal() {
+    const videoModal = document.getElementById('thief-found-video-modal');
+    const iframe = document.getElementById('thief-found-video-iframe');
+    
+    if (videoModal) {
+        if (iframe) {
+            iframe.src = '';
+        }
+        videoModal.classList.add('hidden');
+    }
+}
+
 // Reproducir video de inicio de ronda
-function playRoundStartVideo() {
+function playRoundStartVideo(callback) {
     const videoModal = document.getElementById('round-video-modal');
     const video = document.getElementById('round-start-video');
     const iframe = document.getElementById('round-start-video-iframe');
@@ -380,12 +451,31 @@ function playRoundStartVideo() {
                     originalCloseBtn.addEventListener('click', tempHandler, { once: true });
                 }
             } else {
-                // Comportamiento normal (solo cerrar después de 30 segundos)
+                // Comportamiento normal - si hay callback, ejecutarlo cuando se cierre
+                const closeHandler = () => {
+                    if (callback && typeof callback === 'function') {
+                        callback();
+                    }
+                };
+                
+                // Cerrar automáticamente después de 30 segundos
                 setTimeout(() => {
                     if (!videoModal.classList.contains('hidden')) {
                         closeVideoModal();
+                        closeHandler();
                     }
                 }, 30000);
+                
+                // También permitir cerrar manualmente
+                const closeBtn = document.getElementById('close-video-btn');
+                if (closeBtn) {
+                    const tempHandler = () => {
+                        closeVideoModal();
+                        closeHandler();
+                        closeBtn.removeEventListener('click', tempHandler);
+                    };
+                    closeBtn.addEventListener('click', tempHandler, { once: true });
+                }
             }
         } else if (video) {
             // Último fallback: intentar con video HTML5 directo desde Google Drive
@@ -577,9 +667,15 @@ async function joinSession() {
 
         updatePlayersList();
         
+        // Actualizar el ID de sesión en la UI
+        updateUI();
+        
         // Si hay una ronda en curso, ir al juego
         if (data.session.roundCharacters.length > 0 && data.session.thief) {
-            showScreen('game-screen');
+            // Si la ronda ya comenzó, reproducir el video inicial primero
+            playRoundStartVideo(() => {
+                showScreen('game-screen');
+            });
         } else {
             alert('Te has unido a la sesión. Esperando a que el maestro inicie la primera ronda...');
         }
@@ -716,9 +812,11 @@ function renderCharacterGrid() {
     grid.innerHTML = '';
 
     // Aleatorizar el orden de los personajes para los guessers
+    // El maestro ve el orden original, los guessers ven orden aleatorio
     let charactersToShow = [...GameState.roundCharacters];
     if (!GameState.isMaster) {
-        charactersToShow = charactersToShow.sort(() => Math.random() - 0.5);
+        // Crear una copia y aleatorizar solo para guessers
+        charactersToShow = [...GameState.roundCharacters].sort(() => Math.random() - 0.5);
     }
 
     charactersToShow.forEach(character => {
@@ -739,8 +837,14 @@ function renderCharacterGrid() {
         }
 
         // Solo el maestro puede ver que es el ladrón (highlight y nombre especial)
+        // Los guessers nunca ven el highlight, incluso si conocen el ID
         if (GameState.isMaster && GameState.thief && character.id === GameState.thief.id) {
             card.classList.add('thief');
+        }
+        
+        // Asegurarse de que los guessers nunca vean la clase 'thief'
+        if (!GameState.isMaster) {
+            card.classList.remove('thief');
         }
 
         // Usar imagen del personaje (puede ser de variaciones generadas o predefinidas)
