@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="¿Quién Escondió los Shorts? - Juego de deducción">
+    <title>¿Quién Escondió los Shorts?</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Pantalla Home -->
+    <div id="home-screen" class="screen active">
+        <div class="container">
+            <h1 class="title">¿Quién Escondió los Shorts?</h1>
+            <div class="character-background"></div>
+            <div class="button-group">
+                <button id="btn-start-master" class="btn btn-primary">Iniciar Ronda (Maestro)</button>
+                <button id="btn-join-round" class="btn btn-secondary">Unirse a Ronda</button>
+                <button id="btn-leaderboard" class="btn btn-tertiary">Clasificación</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pantalla Head Master Setup -->
+    <div id="master-setup-screen" class="screen">
+        <div class="container">
+            <h2>Configuración del Maestro</h2>
+            <div class="form-group">
+                <label for="num-characters">Número de Personajes (8-12):</label>
+                <input type="range" id="num-characters" min="8" max="12" value="10">
+                <span id="characters-display">10</span>
+            </div>
+            <div class="form-group">
+                <label for="num-questions">Preguntas por Ronda (5-6):</label>
+                <input type="range" id="num-questions" min="5" max="6" value="5">
+                <span id="questions-display">5</span>
+            </div>
+            <div class="form-group">
+                <label for="num-rounds">Número de Rondas (1-10):</label>
+                <input type="range" id="num-rounds" min="1" max="10" value="5">
+                <span id="rounds-display">5</span>
+            </div>
+            <div class="form-group">
+                <label for="master-name">Tu Nombre:</label>
+                <input type="text" id="master-name" placeholder="Ingresa tu nombre" maxlength="20">
+            </div>
+            <button id="btn-start-round" class="btn btn-primary">Iniciar Ronda</button>
+            <button id="btn-back-home" class="btn btn-secondary">Volver</button>
+        </div>
+    </div>
+
+    <!-- Pantalla Join Round -->
+    <div id="join-screen" class="screen">
+        <div class="container">
+            <h2>Unirse a Ronda</h2>
+            <div class="form-group">
+                <label for="session-id-input">ID de Sesión (4 dígitos):</label>
+                <input type="text" id="session-id-input" placeholder="0000" maxlength="4" pattern="[0-9]{4}">
+            </div>
+            <div class="form-group">
+                <label for="player-name">Tu Nombre:</label>
+                <input type="text" id="player-name" placeholder="Ingresa tu nombre" maxlength="20">
+            </div>
+            <button id="btn-join-session" class="btn btn-primary">Unirse</button>
+            <div id="joined-players" class="joined-players">
+                <h3>Jugadores Conectados:</h3>
+                <ul id="players-list"></ul>
+            </div>
+            <button id="btn-back-home-2" class="btn btn-secondary">Volver</button>
+        </div>
+    </div>
+
+    <!-- Pantalla Principal del Juego -->
+    <div id="game-screen" class="screen">
+        <div class="top-bar">
+            <div class="top-bar-left">
+                <div class="session-info">
+                    <span>Ronda: <strong id="current-round">1</strong>/<span id="total-rounds">5</span></span>
+                    <span>ID: <strong id="session-id-display">0000</strong></span>
+                </div>
+            </div>
+            <div class="top-bar-right">
+                <div class="question-count">
+                    <span>Preguntas: <strong id="questions-remaining">5</strong></span>
+                </div>
+            </div>
+        </div>
+
+        <div class="game-content">
+            <!-- Leaderboard Sidebar -->
+            <div id="leaderboard-panel" class="leaderboard-panel">
+                <h3>Clasificación</h3>
+                <ul id="leaderboard-list"></ul>
+            </div>
+
+            <!-- Character Grid -->
+            <div class="character-grid-container">
+                <h3 id="game-status">Selecciona una pregunta</h3>
+                <div id="character-grid" class="character-grid"></div>
+            </div>
+
+            <!-- Question Panel -->
+            <div id="question-panel" class="question-panel">
+                <h3>Preguntas Disponibles</h3>
+                <div id="questions-list" class="questions-list"></div>
+                <div id="master-answer-panel" class="master-answer-panel hidden">
+                    <p id="current-question-text"></p>
+                    <div class="answer-buttons">
+                        <button id="btn-answer-yes" class="btn btn-success">Sí</button>
+                        <button id="btn-answer-no" class="btn btn-danger">No</button>
+                    </div>
+                </div>
+                <div id="guess-panel" class="guess-panel hidden">
+                    <button id="btn-make-guess" class="btn btn-primary">Hacer Mi Adivinanza</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pantalla de Fin de Ronda -->
+    <div id="round-end-screen" class="screen">
+        <div class="container">
+            <h2>¡Fin de la Ronda!</h2>
+            <div id="thief-reveal" class="thief-reveal">
+                <h3>El Ladrón Era:</h3>
+                <div id="thief-character" class="thief-character"></div>
+            </div>
+            <div id="round-results" class="round-results">
+                <h3>Resultados de la Ronda</h3>
+                <ul id="results-list"></ul>
+            </div>
+            <div id="session-progress" class="session-progress">
+                <p>Ronda <span id="round-progress">1</span> de <span id="total-rounds-progress">5</span></p>
+            </div>
+            <div class="button-group">
+                <button id="btn-next-round" class="btn btn-primary hidden">Siguiente Ronda</button>
+                <button id="btn-end-session" class="btn btn-secondary hidden">Finalizar Sesión</button>
+                <button id="btn-back-to-game" class="btn btn-tertiary">Volver al Juego</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pantalla de Fin de Sesión -->
+    <div id="session-end-screen" class="screen">
+        <div class="container">
+            <h2>¡Sesión Finalizada!</h2>
+            <div id="final-leaderboard" class="final-leaderboard">
+                <h3>Clasificación Final</h3>
+                <ul id="final-leaderboard-list"></ul>
+            </div>
+            <div id="session-stats" class="session-stats">
+                <h3>Estadísticas de Sesión</h3>
+                <div id="stats-content"></div>
+            </div>
+            <button id="btn-new-session" class="btn btn-primary">Nueva Sesión</button>
+            <button id="btn-back-home-final" class="btn btn-secondary">Volver al Inicio</button>
+        </div>
+    </div>
+
+    <!-- Pantalla de Leaderboard -->
+    <div id="leaderboard-screen" class="screen">
+        <div class="container">
+            <h2>Clasificación General</h2>
+            <div id="leaderboard-content"></div>
+            <button id="btn-back-home-3" class="btn btn-secondary">Volver</button>
+        </div>
+    </div>
+
+    <script src="characters.js"></script>
+    <script src="game.js"></script>
+</body>
+</html>
+

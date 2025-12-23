@@ -1,0 +1,27 @@
+{
+  "name": "quien-escondio-los-shorts",
+  "version": "1.0.0",
+  "description": "Juego de deducción - ¿Quién Escondió los Shorts?",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js",
+    "generate-images": "node scripts/generateImages.js",
+    "download-video": "node scripts/downloadVideo.js"
+  },
+  "keywords": ["game", "deduction", "multiplayer"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "socket.io": "^4.6.1",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "openai": "^4.20.0",
+    "uuid": "^9.0.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  }
+}
+

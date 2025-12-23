@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="¿Quién Escondió los Shorts? - Juego de deducción">
+    <title>¿Quién Escondió los Shorts?</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="/socket.io/socket.io.js"></script>
+</head>
+<body>
+    <!-- Pantalla Home -->
+    <div id="home-screen" class="screen active">
+        <div class="container">
+            <h1 class="title">¿Quién Escondió los Shorts?</h1>
+            <div class="character-background"></div>
+            <div class="button-group">
+                <button id="btn-start-master" class="btn btn-primary">Iniciar Ronda (Maestro)</button>
+                <button id="btn-join-round" class="btn btn-secondary">Unirse a Ronda</button>
+                <button id="btn-leaderboard" class="btn btn-tertiary">Clasificación</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pantalla Head Master Setup -->
+    <div id="master-setup-screen" class="screen">
+        <div class="container">
+            <h2>Configuración del Maestro</h2>
+            <div class="form-group">
+                <label for="num-questions">Preguntas por Ronda (5-6):</label>
+                <input type="range" id="num-questions" min="5" max="6" value="5">
+                <span id="questions-display">5</span>
+            </div>
+            <div class="form-group">
+                <label for="num-rounds">Número de Rondas (1-10):</label>
+                <input type="range" id="num-rounds" min="1" max="10" value="5">
+                <span id="rounds-display">5</span>
+            </div>
+            <div class="form-group">
+                <label for="master-name">Tu Nombre:</label>
+                <input type="text" id="master-name" placeholder="Ingresa tu nombre" maxlength="20">
+            </div>
+            <button id="btn-start-round" class="btn btn-primary">Iniciar Ronda</button>
+            <button id="btn-back-home" class="btn btn-secondary">Volver</button>
+        </div>
+    </div>
+
+    <!-- Pantalla de Descripción del Personaje -->
+    <div id="character-description-screen" class="screen">
+        <div class="container">
+            <h2>Describe el Personaje del Ladrón</h2>
+            <p class="hint-text">Describe cómo se ve el personaje que escondió los shorts. Sé creativo y detallado.</p>
+            <div class="form-group">
+                <label for="character-description">Descripción del Personaje:</label>
+                <textarea id="character-description" 
+                          rows="6" 
+                          placeholder="Ejemplo: Un hombre alto con cabello desordenado, lleva una camisa roja arrugada, pantalones cortos azules, tiene gafas de sol, está de pie con los brazos cruzados, tiene una expresión confiada y lleva una mochila verde..."
+                          maxlength="500"></textarea>
+                <small class="char-count"><span id="char-count">0</span>/500 caracteres</small>
+            </div>
+            <button id="btn-generate-character" class="btn btn-primary">Generar Personaje</button>
+            <div id="character-generation-status" class="generation-status hidden">
+                <p>🔄 Generando imagen del personaje...</p>
+            </div>
+            <div id="generated-character-preview" class="character-preview hidden">
+                <h3>Tu Personaje Generado:</h3>
+                <div id="character-image-container" class="character-image-container"></div>
+                <p class="preview-hint">Este es el personaje que los jugadores deben encontrar entre 25 variaciones similares.</p>
+                <button id="btn-confirm-character" class="btn btn-success">Confirmar y Generar Variaciones</button>
+                <button id="btn-regenerate-character" class="btn btn-secondary">Regenerar Personaje</button>
+            </div>
+            <div id="variations-generation-status" class="generation-status hidden">
+                <p>🔄 Generando 7 variaciones del personaje...</p>
+                <div class="progress-container">
+                    <div class="progress-bar">
+                        <div id="progress-bar-fill" class="progress-bar-fill" style="width: 0%"></div>
+                    </div>
+                    <p class="progress-text" id="progress-text">0%</p>
+                </div>
+                <p class="status-detail" id="status-detail">Esto puede tardar unos minutos. Por favor espera...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pantalla Join Round -->
+    <div id="join-screen" class="screen">
+        <div class="container">
+            <h2>Unirse a Ronda</h2>
+            <div class="form-group">
+                <label for="session-id-input">ID de Sesión (4 dígitos):</label>
+                <input type="text" id="session-id-input" placeholder="0000" maxlength="4" pattern="[0-9]{4}">
+            </div>
+            <div class="form-group">
+                <label for="player-name">Tu Nombre:</label>
+                <input type="text" id="player-name" placeholder="Ingresa tu nombre" maxlength="20">
+            </div>
+            <button id="btn-join-session" class="btn btn-primary">Unirse</button>
+            <div id="joined-players" class="joined-players">
+                <h3>Jugadores Conectados:</h3>
+                <ul id="players-list"></ul>
+            </div>
+            <button id="btn-back-home-2" class="btn btn-secondary">Volver</button>
+        </div>
+    </div>
+
+    <!-- Modal de Video de Inicio de Ronda -->
+    <div id="round-video-modal" class="video-modal hidden">
+        <div class="video-modal-content">
+            <button id="close-video-btn" class="close-video-btn">✕</button>
+            <div id="video-container">
+                <!-- Intentar con iframe de Google Drive primero -->
+                <iframe id="round-start-video-iframe" 
+                        class="round-start-video-iframe hidden"
+                        src="" 
+                        frameborder="0" 
+                        allow="autoplay; encrypted-media" 
+                        allowfullscreen>
+                </iframe>
+                <!-- Fallback a video HTML5 -->
+                <video id="round-start-video" 
+                       class="round-start-video hidden" 
+                       autoplay 
+                       muted 
+                       playsinline>
+                    <source src="" type="video/mp4">
+                    Tu navegador no soporta la reproducción de video.
+                </video>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Personaje en Pantalla Completa -->
+    <div id="character-modal" class="character-modal hidden">
+        <div class="character-modal-content">
+            <button id="close-character-modal-btn" class="close-character-modal-btn">✕</button>
+            <div id="character-modal-image-container">
+                <img id="character-modal-image" src="" alt="Personaje">
+            </div>
+            <div id="character-modal-name" class="character-modal-name"></div>
+            <div id="character-modal-actions" class="character-modal-actions">
+                <button id="btn-eliminate-character" class="btn btn-danger">✕ Eliminar</button>
+                <button id="btn-guess-character" class="btn btn-primary">🎯 Adivinar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pantalla Principal del Juego -->
+    <div id="game-screen" class="screen">
+        <div class="top-bar">
+            <div class="top-bar-left">
+                <div class="session-info">
+                    <span>Ronda: <strong id="current-round">1</strong>/<span id="total-rounds">5</span></span>
+                    <span>ID: <strong id="session-id-display">0000</strong></span>
+                </div>
+            </div>
+            <div class="top-bar-right">
+                <div class="question-count">
+                    <span>Preguntas: <strong id="questions-remaining">5</strong></span>
+                </div>
+            </div>
+        </div>
+
+        <div class="game-content">
+            <!-- Leaderboard Sidebar -->
+            <div id="leaderboard-panel" class="leaderboard-panel">
+                <h3>Clasificación</h3>
+                <ul id="leaderboard-list"></ul>
+            </div>
+
+            <!-- Character Grid -->
+            <div class="character-grid-container">
+                <h3 id="game-status">Selecciona una pregunta</h3>
+                <div id="character-grid" class="character-grid"></div>
+            </div>
+
+            <!-- Question Panel (Solo para Guessers) -->
+            <div id="question-panel" class="question-panel">
+                <h3>Hacer una Pregunta</h3>
+                <div class="form-group">
+                    <textarea id="question-input" 
+                              placeholder="Escribe tu pregunta aquí... (ej: ¿El ladrón lleva gafas?)" 
+                              rows="2"
+                              maxlength="200"></textarea>
+                    <small class="char-count">Preguntas restantes: <span id="questions-remaining-display">5</span></small>
+                </div>
+                <button id="btn-submit-question" class="btn btn-primary">Enviar Pregunta</button>
+                <p class="hint-text">💡 Haz clic en un personaje para eliminarlo de tus sospechosos</p>
+            </div>
+            
+            <!-- Panel de Respuesta (Solo para Maestro) -->
+            <div id="master-answer-panel" class="master-answer-panel hidden">
+                <h3>Pregunta Recibida</h3>
+                <div class="question-display">
+                    <p id="current-question-text"></p>
+                    <p class="question-author">Pregunta de: <strong id="question-author-name"></strong></p>
+                </div>
+                <div class="answer-buttons">
+                    <button id="btn-answer-yes" class="btn btn-success">Sí</button>
+                    <button id="btn-answer-no" class="btn btn-danger">No</button>
+                </div>
+            </div>
+            
+            <!-- Panel de Adivinanza -->
+            <div id="guess-panel" class="guess-panel">
+                <button id="btn-make-guess" class="btn btn-primary">Hacer Mi Adivinanza</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pantalla de Fin de Ronda -->
+    <div id="round-end-screen" class="screen">
+        <div class="container">
+            <h2>¡Fin de la Ronda!</h2>
+            <div id="thief-reveal" class="thief-reveal">
+                <h3>El Ladrón Era:</h3>
+                <div id="thief-character" class="thief-character"></div>
+            </div>
+            <div id="round-results" class="round-results">
+                <h3>Resultados de la Ronda</h3>
+                <ul id="results-list"></ul>
+            </div>
+            <div id="session-progress" class="session-progress">
+                <p>Ronda <span id="round-progress">1</span> de <span id="total-rounds-progress">5</span></p>
+            </div>
+            <div class="button-group">
+                <button id="btn-next-round" class="btn btn-primary hidden">Siguiente Ronda</button>
+                <button id="btn-end-session" class="btn btn-secondary hidden">Finalizar Sesión</button>
+                <button id="btn-back-to-game" class="btn btn-tertiary">Volver al Juego</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pantalla de Fin de Sesión -->
+    <div id="session-end-screen" class="screen">
+        <div class="container">
+            <h2>¡Sesión Finalizada!</h2>
+            <div id="final-leaderboard" class="final-leaderboard">
+                <h3>Clasificación Final</h3>
+                <ul id="final-leaderboard-list"></ul>
+            </div>
+            <div id="session-stats" class="session-stats">
+                <h3>Estadísticas de Sesión</h3>
+                <div id="stats-content"></div>
+            </div>
+            <button id="btn-new-session" class="btn btn-primary">Nueva Sesión</button>
+            <button id="btn-back-home-final" class="btn btn-secondary">Volver al Inicio</button>
+        </div>
+    </div>
+
+    <!-- Pantalla de Leaderboard -->
+    <div id="leaderboard-screen" class="screen">
+        <div class="container">
+            <h2>Clasificación General</h2>
+            <div id="leaderboard-content"></div>
+            <button id="btn-back-home-3" class="btn btn-secondary">Volver</button>
+        </div>
+    </div>
+
+    <script src="characters.js"></script>
+    <script src="game-client.js"></script>
+</body>
+</html>
+
