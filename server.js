@@ -24,7 +24,7 @@ console.log('PORT:', process.env.PORT);
 console.log('All env vars count:', Object.keys(process.env).length);
 console.log('Env vars containing "OPENAI":', Object.keys(process.env).filter(k => k.toLowerCase().includes('openai')));
 console.log('Env vars containing "NODE":', Object.keys(process.env).filter(k => k.toLowerCase().includes('node')));
-console.log('First 20 env var keys:', Object.keys(process.env).slice(0, 20).sort());
+console.log('All env var keys (sorted):', Object.keys(process.env).sort().join(', '));
 console.log('========================================');
 
 // Verificar que OPENAI_API_KEY esté disponible
