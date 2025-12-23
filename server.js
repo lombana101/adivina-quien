@@ -448,6 +448,9 @@ CRITICAL STYLE REQUIREMENTS:
         
         sessions.set(sessionId, session);
         
+        // Encontrar el índice del ladrón en el array aleatorizado
+        const thiefIndex = shuffled.findIndex(char => char.id === originalCharacter.id);
+        
         // Notificar que terminó la generación
         io.to(sessionId).emit('roundStarted', {
             roundCharacters: session.roundCharacters,
@@ -458,7 +461,7 @@ CRITICAL STYLE REQUIREMENTS:
         res.json({ 
             success: true,
             characters: session.roundCharacters,
-            thiefIndex: originalIndex
+            thiefIndex: thiefIndex
         });
     } catch (error) {
         console.error('Error generating variations:', error);
