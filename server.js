@@ -9,6 +9,13 @@ const fs = require('fs');
 const https = require('https');
 require('dotenv').config();
 
+// Verificar que OPENAI_API_KEY esté disponible
+if (!process.env.OPENAI_API_KEY) {
+    console.error('ERROR: OPENAI_API_KEY environment variable is missing!');
+    console.error('Available environment variables:', Object.keys(process.env).filter(k => k.includes('OPENAI') || k.includes('NODE')));
+    process.exit(1);
+}
+
 const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY
 });
