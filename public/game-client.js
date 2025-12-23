@@ -657,6 +657,7 @@ async function joinSession() {
 
         GameState.playerName = playerName;
         GameState.isMaster = false;
+        GameState.sessionId = sessionId; // Asegurar que el sessionId se establece
         updateGameState(data.session);
         
         // Conectar al socket
