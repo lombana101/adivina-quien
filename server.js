@@ -7,17 +7,37 @@ const { v4: uuidv4 } = require('uuid');
 const { OpenAI } = require('openai');
 const fs = require('fs');
 const https = require('https');
-require('dotenv').config();
+// Cargar variables de entorno (solo en desarrollo local)
+// En producción (Railway), las variables ya están en process.env
+if (process.env.NODE_ENV !== 'production') {
+    require('dotenv').config();
+}
 
 // Verificar que OPENAI_API_KEY esté disponible
-if (!process.env.OPENAI_API_KEY) {
-    console.error('ERROR: OPENAI_API_KEY environment variable is missing!');
-    console.error('Available environment variables:', Object.keys(process.env).filter(k => k.includes('OPENAI') || k.includes('NODE')));
+let apiKey = process.env.OPENAI_API_KEY;
+
+// Si no está en variables de entorno, intentar leer de todas las posibles fuentes
+if (!apiKey || apiKey.trim() === '') {
+    // Intentar diferentes nombres de variable (por si Railway usa otro nombre)
+    apiKey = process.env.OPENAI_API_KEY || 
+             process.env.openai_api_key || 
+             process.env.OPENAIKEY ||
+             process.env.openai_key;
+}
+
+// Si aún no está disponible, mostrar error detallado
+if (!apiKey || apiKey.trim() === '') {
+    console.error('ERROR: OPENAI_API_KEY environment variable is missing or empty!');
+    console.error('NODE_ENV:', process.env.NODE_ENV);
+    console.error('All env vars:', Object.keys(process.env).sort());
+    console.error('Available env vars with OPENAI:', Object.keys(process.env).filter(k => k.includes('OPENAI') || k.toLowerCase().includes('openai')));
+    console.error('Available env vars with NODE:', Object.keys(process.env).filter(k => k.includes('NODE')));
+    console.error('Please configure OPENAI_API_KEY in Railway Variables');
     process.exit(1);
 }
 
 const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY
+    apiKey: apiKey.trim()
 });
 
 const app = express();
