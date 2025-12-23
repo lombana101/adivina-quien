@@ -7,20 +7,53 @@ const { v4: uuidv4 } = require('uuid');
 const { OpenAI } = require('openai');
 const fs = require('fs');
 const https = require('https');
-// Cargar variables de entorno (solo en desarrollo local)
-// En producción (Railway), las variables ya están en process.env
-if (process.env.NODE_ENV !== 'production') {
+// Cargar variables de entorno
+// Railway proporciona variables directamente en process.env, pero cargamos dotenv por si acaso
+// (útil para desarrollo local y casos donde Railway no las pasa correctamente)
+try {
     require('dotenv').config();
+} catch (e) {
+    // dotenv no es crítico si las variables ya están en process.env
+    console.log('dotenv not available or already loaded');
 }
 
+// Diagnóstico: mostrar información sobre variables de entorno
+console.log('=== Environment Variables Diagnostic ===');
+console.log('NODE_ENV:', process.env.NODE_ENV);
+console.log('PORT:', process.env.PORT);
+console.log('All env vars count:', Object.keys(process.env).length);
+console.log('Env vars containing "OPENAI":', Object.keys(process.env).filter(k => k.toLowerCase().includes('openai')));
+console.log('Env vars containing "NODE":', Object.keys(process.env).filter(k => k.toLowerCase().includes('node')));
+console.log('First 20 env var keys:', Object.keys(process.env).slice(0, 20).sort());
+console.log('========================================');
+
 // Verificar que OPENAI_API_KEY esté disponible
-const apiKey = process.env.OPENAI_API_KEY;
-if (!apiKey || apiKey.trim() === '') {
+// Intentar múltiples variaciones del nombre por si Railway usa otro formato
+let apiKey = process.env.OPENAI_API_KEY || 
+             process.env.openai_api_key || 
+             process.env.OPENAIKEY ||
+             process.env.openai_key ||
+             process.env['OPENAI_API_KEY'];
+
+// Limpiar el valor si existe (remover comillas y espacios)
+if (apiKey) {
+    apiKey = apiKey.trim().replace(/^["']|["']$/g, ''); // Remover comillas al inicio/final
+}
+
+if (!apiKey || apiKey === '') {
     console.error('ERROR: OPENAI_API_KEY environment variable is missing or empty!');
-    console.error('NODE_ENV:', process.env.NODE_ENV);
-    console.error('Please configure OPENAI_API_KEY in Railway Variables');
+    console.error('');
+    console.error('Troubleshooting steps:');
+    console.error('1. Go to Railway → Your Service → Variables tab');
+    console.error('2. Ensure OPENAI_API_KEY is set (without quotes in Raw Editor)');
+    console.error('3. Make sure it\'s a Service Variable, not just a Shared Variable');
+    console.error('4. Click "Deploy" or "Redeploy" after adding/modifying variables');
+    console.error('5. Check that the variable name is exactly: OPENAI_API_KEY (case-sensitive)');
+    console.error('');
     process.exit(1);
 }
+
+console.log('✓ OPENAI_API_KEY found (length:', apiKey.length, 'characters)');
 
 const openai = new OpenAI({
     apiKey: apiKey.trim()
