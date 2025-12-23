@@ -105,13 +105,25 @@ app.post('/api/session/create', (req, res) => {
         return res.status(400).json({ error: 'Master name is required' });
     }
 
+    // Validar numQuestions (debe estar entre 1 y 10)
+    const validatedNumQuestions = parseInt(numQuestions) || 5;
+    if (validatedNumQuestions < 1 || validatedNumQuestions > 10) {
+        return res.status(400).json({ error: 'Number of questions must be between 1 and 10' });
+    }
+
+    // Validar totalRounds (debe estar entre 1 y 10)
+    const validatedTotalRounds = parseInt(totalRounds) || 5;
+    if (validatedTotalRounds < 1 || validatedTotalRounds > 10) {
+        return res.status(400).json({ error: 'Number of rounds must be between 1 and 10' });
+    }
+
     const sessionId = Math.floor(1000 + Math.random() * 9000).toString();
     
     const session = {
         sessionId,
         masterName,
-        numQuestions: numQuestions || 5,
-        totalRounds: totalRounds || 5,
+        numQuestions: validatedNumQuestions,
+        totalRounds: validatedTotalRounds,
         currentRound: 1,
         players: [{ name: masterName, isMaster: true, score: 0, socketId: null }],
         sessionScores: { [masterName]: 0 },

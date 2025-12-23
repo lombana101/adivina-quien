@@ -558,14 +558,28 @@ async function startNewSession() {
         return;
     }
 
+    // Validar numQuestions
+    const numQuestions = parseInt(GameState.numQuestions) || 5;
+    if (numQuestions < 1 || numQuestions > 10) {
+        alert('El número de preguntas debe estar entre 1 y 10');
+        return;
+    }
+
+    // Validar totalRounds
+    const totalRounds = parseInt(GameState.totalRounds) || 5;
+    if (totalRounds < 1 || totalRounds > 10) {
+        alert('El número de rondas debe estar entre 1 y 10');
+        return;
+    }
+
     try {
         const response = await fetch('/api/session/create', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 masterName,
-                numQuestions: GameState.numQuestions,
-                totalRounds: GameState.totalRounds
+                numQuestions: numQuestions,
+                totalRounds: totalRounds
             })
         });
 
