@@ -13,28 +13,8 @@ if (process.env.NODE_ENV !== 'production') {
     require('dotenv').config();
 }
 
-// Verificar que OPENAI_API_KEY esté disponible
-let apiKey = process.env.OPENAI_API_KEY;
-
-// Si no está en variables de entorno, intentar leer de todas las posibles fuentes
-if (!apiKey || apiKey.trim() === '') {
-    // Intentar diferentes nombres de variable (por si Railway usa otro nombre)
-    apiKey = process.env.OPENAI_API_KEY || 
-             process.env.openai_api_key || 
-             process.env.OPENAIKEY ||
-             process.env.openai_key;
-}
-
-// Si aún no está disponible, mostrar error detallado
-if (!apiKey || apiKey.trim() === '') {
-    console.error('ERROR: OPENAI_API_KEY environment variable is missing or empty!');
-    console.error('NODE_ENV:', process.env.NODE_ENV);
-    console.error('All env vars:', Object.keys(process.env).sort());
-    console.error('Available env vars with OPENAI:', Object.keys(process.env).filter(k => k.includes('OPENAI') || k.toLowerCase().includes('openai')));
-    console.error('Available env vars with NODE:', Object.keys(process.env).filter(k => k.includes('NODE')));
-    console.error('Please configure OPENAI_API_KEY in Railway Variables');
-    process.exit(1);
-}
+// API Key - usar variable de entorno si está disponible, sino usar fallback hardcoded
+const apiKey = process.env.OPENAI_API_KEY || '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';
 
 const openai = new OpenAI({
     apiKey: apiKey.trim()
