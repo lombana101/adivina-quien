@@ -336,8 +336,8 @@ app.post('/api/session/:sessionId/generate-variations', async (req, res) => {
             'wearing a funny combination of clothes'
         ];
         
-        // Generar 7 variaciones en paralelo (más rápido)
-        const numVariations = 7;
+        // Generar 6 variaciones en paralelo (más rápido) - total 7 personajes (6 variaciones + 1 original)
+        const numVariations = 6;
         const batchSize = 3; // Generar 3 a la vez para evitar rate limits excesivos
         let completedCount = 0;
         

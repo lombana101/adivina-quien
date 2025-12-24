@@ -224,3 +224,4 @@ Si necesitas más recursos más adelante, Railway tiene planes desde $5/mes.
 - Cloudinary: https://cloudinary.com (para imágenes)
 - Vercel: https://vercel.com (solo frontend)
 
+

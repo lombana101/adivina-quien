@@ -22,7 +22,8 @@ const GameState = {
     socket: null,
     eliminatedCharacters: [], // Personajes eliminados por el jugador
     masterWon: false, // Si el maestro ganó la ronda
-    currentModalCharacter: null // Personaje actualmente mostrado en el modal
+    currentModalCharacter: null, // Personaje actualmente mostrado en el modal
+    guessedCharacters: [] // Personajes que han sido adivinados (para resaltar)
 };
 
 // Inicializar conexión Socket.IO
@@ -41,11 +42,31 @@ function initializeSocket() {
     });
     
     GameState.socket.on('playerJoined', (data) => {
+        // Actualizar lista de jugadores en el estado
+        if (data.players) {
+            GameState.players = data.players;
+        }
         updatePlayersList();
+        // Si estamos en la pantalla de juego, actualizar el leaderboard también
+        if (GameState.currentScreen === 'game-screen') {
+            renderLeaderboard();
+        }
+        // Actualizar UI para reflejar cambios
+        updateUI();
     });
     
     GameState.socket.on('playerConnected', (data) => {
+        // Actualizar lista de jugadores en el estado
+        if (data.players) {
+            GameState.players = data.players;
+        }
         updatePlayersList();
+        // Si estamos en la pantalla de juego, actualizar el leaderboard también
+        if (GameState.currentScreen === 'game-screen') {
+            renderLeaderboard();
+        }
+        // Actualizar UI para reflejar cambios
+        updateUI();
     });
     
     GameState.socket.on('roundStarted', (data) => {
@@ -57,6 +78,7 @@ function initializeSocket() {
         GameState.guesses = [];
         GameState.usedQuestions = [];
         GameState.eliminatedCharacters = []; // Resetear eliminados al inicio de ronda
+        GameState.guessedCharacters = []; // Resetear personajes adivinados al inicio de ronda
         
         // Ocultar pantalla de generación
         const statusDiv = document.getElementById('variations-generation-status');
@@ -123,6 +145,12 @@ function initializeSocket() {
     
     GameState.socket.on('guessMade', (data) => {
         GameState.guesses = data.guesses;
+        // Agregar el personaje adivinado a la lista de personajes adivinados
+        if (data.guess && data.guess.character) {
+            if (!GameState.guessedCharacters.includes(data.guess.character.id)) {
+                GameState.guessedCharacters.push(data.guess.character.id);
+            }
+        }
         updateUI();
         
         // Si alguien adivinó correctamente, mostrar modal y video
@@ -804,17 +832,22 @@ function updatePlayersList() {
 function renderGameScreen() {
     renderCharacterGrid();
     
-    // Solo mostrar panel de preguntas si es el maestro
+    // Ocultar panel de preguntas para todos (los jugadores no pueden enviar preguntas)
     const questionPanel = document.getElementById('question-panel');
     const guessPanel = document.getElementById('guess-panel');
     
+    questionPanel.classList.add('hidden');
+    
     if (GameState.isMaster) {
-        questionPanel.classList.remove('hidden');
         guessPanel.classList.add('hidden');
         renderQuestions();
     } else {
-        questionPanel.classList.add('hidden');
-        guessPanel.classList.remove('hidden');
+        // Para guessers, mostrar panel de adivinanza solo si no quedan preguntas
+        if (GameState.questionsRemaining === 0) {
+            guessPanel.classList.remove('hidden');
+        } else {
+            guessPanel.classList.add('hidden');
+        }
     }
     
     renderLeaderboard();
@@ -849,6 +882,12 @@ function renderCharacterGrid() {
         const isEliminated = GameState.eliminatedCharacters.includes(character.id);
         if (isEliminated) {
             card.classList.add('eliminated');
+        }
+
+        // Verificar si este personaje fue adivinado por algún jugador
+        const isGuessed = GameState.guessedCharacters.includes(character.id);
+        if (isGuessed) {
+            card.classList.add('guessed');
         }
 
         // Solo el maestro puede ver que es el ladrón (highlight y nombre especial)
@@ -889,6 +928,7 @@ function renderCharacterGrid() {
             </div>
             <div class="character-name">${characterName}</div>
             ${isEliminated ? '<div class="eliminated-badge">✕ Eliminado</div>' : ''}
+            ${isGuessed ? '<div class="guessed-badge">✓ Adivinado</div>' : ''}
         `;
 
         // Si es el maestro, no permitir interacción
@@ -947,18 +987,19 @@ function renderQuestions() {
         return;
     }
 
-    // Si es guesser, mostrar panel de preguntas
+    // Si es guesser, ocultar panel de preguntas (solo mostrar contador)
     document.getElementById('master-answer-panel').classList.add('hidden');
     
     // Actualizar contador de preguntas
     document.getElementById('questions-remaining-display').textContent = GameState.questionsRemaining;
     
-    // Si no quedan preguntas, mostrar solo panel de adivinanza
+    // Ocultar el panel de preguntas completamente - los jugadores no pueden enviar preguntas
+    document.getElementById('question-panel').classList.add('hidden');
+    
+    // Si no quedan preguntas, mostrar panel de adivinanza
     if (GameState.questionsRemaining === 0) {
-        document.getElementById('question-panel').classList.add('hidden');
         document.getElementById('guess-panel').classList.remove('hidden');
     } else {
-        document.getElementById('question-panel').classList.remove('hidden');
         document.getElementById('guess-panel').classList.add('hidden');
     }
 }
@@ -1428,7 +1469,8 @@ function resetGame() {
         usedQuestions: [],
         currentQuestion: null,
         waitingForAnswer: false,
-        eliminatedCharacters: []
+        eliminatedCharacters: [],
+        guessedCharacters: []
     });
     
     if (GameState.socket) {

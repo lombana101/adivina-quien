@@ -54,3 +54,4 @@
 - Asegúrate de que el servidor esté corriendo
 - Verifica que el puerto 3000 esté disponible
 
+

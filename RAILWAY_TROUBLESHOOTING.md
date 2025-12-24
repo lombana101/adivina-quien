@@ -111,3 +111,4 @@ railway logs
 3. Compara las variables disponibles con lo que esperas
 4. Si `OPENAI_API_KEY` no aparece, sigue los pasos de solución arriba
 
+
