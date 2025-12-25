@@ -23,7 +23,8 @@ const GameState = {
     eliminatedCharacters: [], // Personajes eliminados por el jugador
     masterWon: false, // Si el maestro ganó la ronda
     currentModalCharacter: null, // Personaje actualmente mostrado en el modal
-    guessedCharacters: [] // Personajes que han sido adivinados (para resaltar)
+    guessedCharacters: [], // Personajes que han sido adivinados (para resaltar)
+    selectedCharacter: null // Personaje seleccionado por el jugador actual para adivinar
 };
 
 // Inicializar conexión Socket.IO
@@ -79,6 +80,19 @@ function initializeSocket() {
         GameState.usedQuestions = [];
         GameState.eliminatedCharacters = []; // Resetear eliminados al inicio de ronda
         GameState.guessedCharacters = []; // Resetear personajes adivinados al inicio de ronda
+        GameState.selectedCharacter = null; // Resetear personaje seleccionado al inicio de ronda
+        
+        // El thief debería estar en roundCharacters con isThief: true
+        // Buscar el thief en los roundCharacters
+        const thiefCharacter = GameState.roundCharacters.find(c => c.isThief === true || c.id === 0);
+        if (thiefCharacter) {
+            GameState.thief = thiefCharacter;
+            console.log('Thief found in roundCharacters:', GameState.thief.id, GameState.thief.name, 'isThief:', GameState.thief.isThief);
+        } else {
+            console.warn('Thief not found in roundCharacters! Characters:', GameState.roundCharacters.map(c => ({id: c.id, name: c.name, isThief: c.isThief})));
+        }
+        
+        console.log('Round started, resetting selected character. IsMaster:', GameState.isMaster);
         
         // Ocultar pantalla de generación
         const statusDiv = document.getElementById('variations-generation-status');
@@ -149,6 +163,11 @@ function initializeSocket() {
         if (data.guess && data.guess.character) {
             if (!GameState.guessedCharacters.includes(data.guess.character.id)) {
                 GameState.guessedCharacters.push(data.guess.character.id);
+            }
+            // Si el guess es del jugador actual, mantener la selección
+            if (data.guess.playerName === GameState.playerName && GameState.selectedCharacter) {
+                // La selección ya está establecida, solo actualizar UI
+                console.log('Guess made by current player, keeping selection:', GameState.selectedCharacter.id);
             }
         }
         updateUI();
@@ -282,8 +301,10 @@ function initializeEventListeners() {
     if (guessCharacterBtn) {
         guessCharacterBtn.addEventListener('click', () => {
             if (GameState.currentModalCharacter) {
-                selectCharacterForGuess(GameState.currentModalCharacter);
+                const character = GameState.currentModalCharacter;
                 closeCharacterModal();
+                // Llamar a selectCharacterForGuess que manejará la selección y el confirm
+                selectCharacterForGuess(character);
             }
         });
     }
@@ -571,6 +592,16 @@ function updateGameState(session) {
     GameState.sessionScores = session.sessionScores || {};
     GameState.roundCharacters = session.roundCharacters || [];
     GameState.thief = session.thief || null;
+    
+    // Si no hay thief pero hay roundCharacters, buscar el que tiene isThief: true
+    if (!GameState.thief && GameState.roundCharacters.length > 0) {
+        const thiefCharacter = GameState.roundCharacters.find(c => c.isThief === true);
+        if (thiefCharacter) {
+            GameState.thief = thiefCharacter;
+            console.log('Thief found in updateGameState:', GameState.thief.id, GameState.thief.name);
+        }
+    }
+    
     GameState.questions = session.questions || [];
     GameState.answers = session.answers || [];
     GameState.guesses = session.guesses || [];
@@ -857,6 +888,8 @@ function renderGameScreen() {
 // Renderizar grid de personajes
 function renderCharacterGrid() {
     const grid = document.getElementById('character-grid');
+    if (!grid) return;
+    
     grid.innerHTML = '';
 
     // Aleatorizar el orden de los personajes para los guessers
@@ -865,6 +898,12 @@ function renderCharacterGrid() {
     if (!GameState.isMaster) {
         // Crear una copia y aleatorizar solo para guessers
         charactersToShow = [...GameState.roundCharacters].sort(() => Math.random() - 0.5);
+    }
+
+    // Debug: verificar que todos los personajes se muestren
+    console.log(`Rendering ${charactersToShow.length} characters out of ${GameState.roundCharacters.length} total`);
+    if (GameState.selectedCharacter) {
+        console.log('Selected character ID:', GameState.selectedCharacter.id);
     }
 
     charactersToShow.forEach(character => {
@@ -890,10 +929,34 @@ function renderCharacterGrid() {
             card.classList.add('guessed');
         }
 
+        // Verificar si este personaje fue seleccionado por el jugador actual
+        // Comparar por ID para evitar problemas con referencias de objetos
+        const isSelected = !GameState.isMaster && GameState.selectedCharacter && 
+                          (GameState.selectedCharacter.id === character.id);
+        if (isSelected) {
+            card.classList.add('selected');
+            console.log('Character selected and highlighted:', character.id, character.name, 'Selected ID:', GameState.selectedCharacter.id);
+        }
+
         // Solo el maestro puede ver que es el ladrón (highlight y nombre especial)
         // Los guessers nunca ven el highlight, incluso si conocen el ID
-        if (GameState.isMaster && GameState.thief && character.id === GameState.thief.id) {
-            card.classList.add('thief');
+        if (GameState.isMaster && GameState.thief) {
+            // Comparar por ID o por isThief flag para asegurar que funciona
+            const isThief = character.id === GameState.thief.id || 
+                          (character.isThief === true && GameState.thief.isThief === true) ||
+                          (character.id === 0 && GameState.thief.id === 0) ||
+                          (character.isThief === true);
+            if (isThief) {
+                card.classList.add('thief');
+                console.log('✅ Thief character highlighted for master:', character.id, character.name, 'isThief:', character.isThief);
+            }
+        } else if (GameState.isMaster && !GameState.thief) {
+            // Si es master pero no hay thief, intentar encontrarlo por isThief flag
+            if (character.isThief === true) {
+                GameState.thief = character;
+                card.classList.add('thief');
+                console.log('✅ Thief found and highlighted for master:', character.id, character.name);
+            }
         }
         
         // Asegurarse de que los guessers nunca vean la clase 'thief'
@@ -929,6 +992,7 @@ function renderCharacterGrid() {
             <div class="character-name">${characterName}</div>
             ${isEliminated ? '<div class="eliminated-badge">✕ Eliminado</div>' : ''}
             ${isGuessed ? '<div class="guessed-badge">✓ Adivinado</div>' : ''}
+            ${isSelected ? '<div class="selected-badge">🎯 Seleccionado</div>' : ''}
         `;
 
         // Si es el maestro, no permitir interacción
@@ -1090,6 +1154,24 @@ function showCharacterModal(character) {
     
     GameState.currentModalCharacter = character;
     
+    // Temporalmente destacar el personaje cuando se abre el modal
+    // Esto ayuda al usuario a ver qué personaje está viendo
+    const grid = document.getElementById('character-grid');
+    if (grid) {
+        const cards = grid.querySelectorAll('.character-card');
+        cards.forEach(card => {
+            if (card.dataset.characterId == character.id) {
+                card.classList.add('selected');
+                // Remover después de un momento para no confundir con la selección real
+                setTimeout(() => {
+                    if (!GameState.selectedCharacter || GameState.selectedCharacter.id !== character.id) {
+                        card.classList.remove('selected');
+                    }
+                }, 500);
+            }
+        });
+    }
+    
     const modal = document.getElementById('character-modal');
     const modalImage = document.getElementById('character-modal-image');
     const modalName = document.getElementById('character-modal-name');
@@ -1171,8 +1253,26 @@ function selectCharacterForGuess(character) {
         return;
     }
 
+    // Guardar el personaje seleccionado (guardar una copia con el ID para evitar problemas de referencia)
+    GameState.selectedCharacter = { 
+        id: character.id, 
+        name: character.name,
+        imageUrl: character.imageUrl,
+        isThief: character.isThief
+    };
+    
+    console.log('Setting selected character:', GameState.selectedCharacter);
+    
+    // Re-renderizar el grid para mostrar el highlight
+    renderCharacterGrid();
+
     if (confirm(`¿Estás seguro de que el ladrón es ${character.name}?`)) {
         makeGuess(character);
+    } else {
+        // Si cancelan, limpiar la selección
+        GameState.selectedCharacter = null;
+        console.log('Selection cancelled, clearing selected character');
+        renderCharacterGrid();
     }
 }
 
@@ -1220,8 +1320,12 @@ async function makeGuess(character) {
             throw new Error(data.error || 'Error making guess');
         }
 
+        // Mantener el personaje seleccionado hasta que se actualice el estado
         // El evento 'guessMade' o 'roundEnded' del socket actualizará el estado
     } catch (error) {
+        // Si hay error, limpiar la selección
+        GameState.selectedCharacter = null;
+        renderCharacterGrid();
         alert('Error al hacer adivinanza: ' + error.message);
         console.error(error);
     }
@@ -1470,7 +1574,8 @@ function resetGame() {
         currentQuestion: null,
         waitingForAnswer: false,
         eliminatedCharacters: [],
-        guessedCharacters: []
+        guessedCharacters: [],
+        selectedCharacter: null
     });
     
     if (GameState.socket) {
